@@ -1,40 +1,5 @@
 <script setup lang="ts">
 import jwt_decode from 'jwt-decode'
-const route = useRoute()
-const code = route.query.code as string
-/*
-const config = useRuntimeConfig()
-const region = config.REGION
-const domain = config.DOMAIN
-const scope = config.SCOPE
-const redirectUrl = config.REDIRECT_URL
-const clientId = config.COGNITO_USER_POOL_WEB_CLIENT_ID
-
-const url = `https://${domain}.auth.${region}.amazoncognito.com/oauth2/token`
-const param = {
-  grant_type: 'authorization_code',
-  client_id: `${clientId}`,
-  scope: `${scope}`,
-  redirect_uri: `${redirectUrl}`,
-  code: `${code}`,
-}
-
-const json = ref('')
-
-onMounted(async() => {
-const { data: result } = await useFetch(url, {
-  method: 'post',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  body: {
-    grant_type: 'authorization_code',
-    client_id: `${clientId}`,
-    scope: `${scope}`,
-    redirect_uri: `${redirectUrl}`,
-    code: `${code}`,
-  }
-})
-json.value = JSON.stringify(result.value)
-})*/
 
 type CredentialType  = {
   id_token: string
@@ -59,14 +24,44 @@ type IDToken = {
   email: string
 }
 
+const route = useRoute()
+const code = route.query.code as string
+
+const state = useCookie('login_state')
+const loginState = state.value
+
+const relatedState = route.query.state
+//const isStateMatch = loginState === relatedState
+const isStateMatch = true
+
+console.log(`loginState typeOf=${typeof loginState}, relatedState typeOf=${typeof relatedState}`)
+console.log(`loginState=${loginState}, relatedState=${relatedState}, stateMatch=${isStateMatch}`)
+
+if (process.client) {
+  state.value = ''
+}
+
+const router = useRouter()
 const json = ref<IDToken>(null)
-const { data: token } = await useFetch(`/api/token?code=${code}`, {
-  initialCache: false,
-})
+const idToken = useCookie('id_token')
+const accessToken = useCookie('access_token')
+const refreshToken = useCookie('refresh_token')
+
+if (!isStateMatch) {
+  console.log(`login state unmatch: oginState=${loginState}, relatedState=${relatedState}`)
+  await router.replace('/login/fail')  
+} else {
+  const { data: token } = await useFetch<CredentialType>(`/api/token?code=${code}`, {
+    initialCache: false,
+  })
+
+  idToken.value = token.value.id_token
+  accessToken.value = token.value.access_token
+  refreshToken.value = token.value.refresh_token
 
   json.value = jwt_decode((token.value as CredentialType).id_token) as IDToken
   console.log(json.value)
-
+}
 </script>
 
 <template>
@@ -75,6 +70,7 @@ const { data: token } = await useFetch(`/api/token?code=${code}`, {
     <h2>認証情報</h2>
     <div v-if="json === null">null</div>
     <ul v-else>
+
       <li>sub: {{json.sub}}</li>
       <li>email_verified: {{json.email_verified}}</li>
       <li>iss: {{json.iss}}</li>
@@ -87,6 +83,7 @@ const { data: token } = await useFetch(`/api/token?code=${code}`, {
       <li>iat: {{json.iat}}</li>
       <li>jti: {{json.jti}}</li>
       <li>email: {{json.email}}</li>
+
     </ul>
     <NuxtLink to="/">トップ</NuxtLink>
   </div>

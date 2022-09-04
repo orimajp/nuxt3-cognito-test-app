@@ -1,9 +1,5 @@
 <template>
-  <div>
-     <Script src="/js/polyfills.js"/>
-    <!--
-    <NuxtWelcome />
-    -->
+  <main class="container">
     <NuxtPage />
-  </div>
+  </main>
 </template>
